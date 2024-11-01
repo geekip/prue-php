@@ -1,5 +1,4 @@
 <?php
-
 namespace Prue;
 
 class Node {
@@ -37,13 +36,14 @@ class Router {
 	
 	private function initializeDefaultHandlers(): void {
 		$this->notFoundFunc = function (string $msg = "404 page not found") {
-			http_response_code(404) && exit($msg);
+			\Prue::error($msg, 404);
 		};
 		$this->internalErrorFunc = function (string $msg = "500 internal server error") {
-			http_response_code(500) && exit($msg);
+			\Prue::error($msg, 500);
 		};
 		$this->methodNotAllowedFunc = function (string $msg = "405 method not allowed") {
-			http_response_code(405) && exit($msg);
+			\Prue::error($msg, 405);
+			// http_response_code(405) && exit($msg);
 		};
 	}
 	
@@ -155,42 +155,43 @@ class Router {
 
 	private function formatHandlers($node): array {
 		$handlers = [];
-		foreach ($this->middlewares as $middleware) {
-			$mw = $this->checkHandler($middleware);
+		$middlewares = [...$node->middlewares, $node->handler];
+		$len = count($middlewares);
+		for ($i = 0; $i < $len; $i++) {
+			$mw = $this->checkHandler($middlewares[$i]);
 			if (!$mw) {
-				($this->internalErrorFunc)("500 error: middleware '$middleware' not found");
+				$type = $i == $len-1 ? "routing handler" : "middleware";
+				($this->internalErrorFunc)("500 error: $type '$mw' not found");
 			} else {
 				array_push($handlers, $mw);
-			}
-		}
-		$handler = $this->checkHandler($node->handler);
-		if (!$this->checkHandler($handler)) {
-			($this->internalErrorFunc)("500 error: routing handler '$node->handler' not found");
-		} else {
-			array_push($handlers, $handler);
+			}	
 		}
 		return $handlers;
 	}
 
 	private function checkHandler($handler) {
-		if (is_callable($handler)) {
-			return $handler;
-		}
 		if (is_string($handler)) {
+			if(function_exists($handler)){
+				return $handler;
+			}
 			$handler = str_replace('/', '\\', $handler);
 			if (class_exists($handler)) {
 				return $handler;
 			}
 			if (preg_match('/^(.*)\\\\(.*?)$/', $handler, $matches)) {
-				$class = $matches[1];
-				$action = $matches[2];
-				if(empty($action)){
-					return null;
-				}
-				if (class_exists($class) && method_exists($class, $action)) {
-					return [$class, $action];
-				}
+				$handler = [$matches[1], $matches[2]];
 			}
+		}
+		if (is_array($handler)) {
+			list($class, $action) = $handler;
+			$class = str_replace('/', '\\', $class);
+			$isEmpty = empty($class) || empty($action);
+			if(!$isEmpty && class_exists($class) && method_exists($class, $action)){
+				return $handler;
+			}
+		}
+		if (is_callable($handler)) {
+			return $handler;
 		}
 		return null;
 	}
@@ -208,7 +209,7 @@ class Router {
 			return $handler(...$options);
 		}
 	}
-
+	
 	private function getCurrentUri(): string {
 		$uri = $_SERVER['PATH_INFO'];
 		$uri = empty($uri) ? ($_SERVER['REQUEST_URI'] ?? '/') : $uri;
@@ -245,9 +246,9 @@ class Router {
 				}
 			}
 		}
-		$node->middlewares = array_merge($node->middlewares, $this->middlewares);
-		$node->methods[$method] = $handler;
 		$node->isEnd = true;
+		$node->methods[$method] = $handler;
+		$node->middlewares = array_merge($node->middlewares, $this->middlewares);
 		return $node;
 	}
 	

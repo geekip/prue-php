@@ -2,7 +2,7 @@
 namespace Prue;
 
 class Config{
-  public static $config = [ 
+  public static array $config = [ 
     'DEBUG' => true,
     'USE_SESSION' => true,
     'CACHE_DATA'=>true,
@@ -10,9 +10,8 @@ class Config{
     'TIMEZONE' => 'PRC',
     'CROSS_DOMAIN' => false
   ];
-
-  //获取
-  public static function get( ?String $key=null) : array {
+  
+  public static function get( ?String $key=null){
     $config = self::$config;
     if(isset($key) && $key !=''){
       $config = $config[$key];
@@ -20,7 +19,6 @@ class Config{
     return $config;
   }
 
-  //设置
   public static function set( $key , $value='') : array {
     $config = [];
     if(is_array($key)){

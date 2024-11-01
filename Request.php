@@ -1,4 +1,17 @@
 <?php
+// http://docs.php.net/manual/da/class.httprequest.php
+// getContentType 
+// getCookies
+// getHeaders 
+// getMethod
+// getOptions 
+// getPostFields
+// getPostFiles
+// getPutData
+// getPutFile
+// setCookies
+// setHeaders
+// setMethod 
 
 namespace Prue;
 
